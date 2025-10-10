@@ -5,6 +5,7 @@ import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,12 +24,16 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
 
     private Button addCityButton;
     private ListView cityListView;
+    private Button deleteCityButton;
+    private Button cancelButton;
 
     private ArrayList<City> cityArrayList;
     private ArrayAdapter<City> cityArrayAdapter;
+    private boolean deleteMode = false;
 
     private FirebaseFirestore db;
     private CollectionReference citiesRef;
+    private DocumentReference cityRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,13 +49,13 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
         // Set views
         addCityButton = findViewById(R.id.buttonAddCity);
         cityListView = findViewById(R.id.listviewCities);
+        deleteCityButton = findViewById(R.id.buttonDeleteCity);
+        cancelButton = findViewById(R.id.buttonCancel);
 
         // create city array
         cityArrayList = new ArrayList<>();
         cityArrayAdapter = new CityArrayAdapter(this, cityArrayList);
         cityListView.setAdapter(cityArrayAdapter);
-
-        addDummyData();
 
         // set listeners
         addCityButton.setOnClickListener(view -> {
@@ -60,8 +65,26 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
 
         cityListView.setOnItemClickListener((adapterView, view, i, l) -> {
             City city = cityArrayAdapter.getItem(i);
-            CityDialogFragment cityDialogFragment = CityDialogFragment.newInstance(city);
-            cityDialogFragment.show(getSupportFragmentManager(), "City Details");
+            if (deleteMode) {
+                deleteMode = false;
+                deleteCity(city);
+            } else {
+                CityDialogFragment cityDialogFragment = CityDialogFragment.newInstance(city);
+                cityDialogFragment.show(getSupportFragmentManager(), "City Details");
+            }
+        });
+
+        deleteCityButton.setOnClickListener(view -> {
+            deleteMode = true;
+            Toast.makeText(this, "Select a city to delete", Toast.LENGTH_SHORT).show();
+        });
+
+        cancelButton.setOnClickListener(view -> {
+            if (deleteMode) {
+                deleteMode = false;
+                Toast.makeText(this, "Cancelled delete", Toast.LENGTH_SHORT).show();
+            }
+
         });
 
         db = FirebaseFirestore.getInstance();
@@ -104,11 +127,13 @@ public class MainActivity extends AppCompatActivity implements CityDialogFragmen
 
     }
 
-    public void addDummyData(){
-        City m1 = new City("Edmonton", "AB");
-        City m2 = new City("Vancouver", "BC");
-        cityArrayList.add(m1);
-        cityArrayList.add(m2);
+    public void deleteCity(City city){
+        if (city == null) {
+            return;
+        }
+        cityRef = citiesRef.document(city.getName());
+        cityRef.delete();
+        cityArrayList.remove(city);
         cityArrayAdapter.notifyDataSetChanged();
     }
 }
